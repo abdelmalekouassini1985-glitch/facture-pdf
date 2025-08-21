@@ -1,0 +1,601 @@
+import tkinter as tk
+from tkinter import filedialog, messagebox, ttk
+import pandas as pd
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+import datetime
+import os
+import tempfile
+import json
+
+
+class InvoiceGenerator:
+
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Générateur de Factures PDF")
+        self.root.geometry("800x900")
+
+        # Load saved settings
+        self.settings_file = "invoice_settings.json"
+        self.load_settings()
+
+        self.create_widgets()
+
+    def load_settings(self):
+        """Load saved company settings"""
+        try:
+            with open(self.settings_file, 'r', encoding='utf-8') as f:
+                self.settings = json.load(f)
+        except:
+            self.settings = {}
+
+    def save_settings(self):
+        """Save company settings"""
+        settings = {
+            'company_name': self.company_name_var.get(),
+            'address': self.address_var.get(),
+            'rc_name': self.rc_var.get(),
+            'nif': self.nif_var.get(),
+            'rib': self.rib_var.get(),
+            'item_name': self.item_var.get(),
+            'unit_price': self.unit_price_var.get(),
+            'client_profession': self.profession_var.get()
+        }
+        try:
+            with open(self.settings_file, 'w', encoding='utf-8') as f:
+                json.dump(settings, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            messagebox.showerror(
+                "Erreur", f"Impossible de sauvegarder les paramètres: {e}")
+
+    def create_widgets(self):
+        # Main frame with scrollbar
+        main_frame = ttk.Frame(self.root)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # Title
+        title_label = ttk.Label(main_frame,
+                                text="Générateur de Factures PDF",
+                                font=("Arial", 16, "bold"))
+        title_label.pack(pady=(0, 20))
+
+        # Company Information Frame
+        company_frame = ttk.LabelFrame(main_frame,
+                                       text="Informations de l'entreprise",
+                                       padding=10)
+        company_frame.pack(fill=tk.X, pady=(0, 10))
+
+        # Company fields
+        self.company_name_var = tk.StringVar(
+            value=self.settings.get('company_name', ''))
+        self.address_var = tk.StringVar(value=self.settings.get('address', ''))
+        self.rc_var = tk.StringVar(value=self.settings.get('rc_name', ''))
+        self.nif_var = tk.StringVar(value=self.settings.get('nif', ''))
+        self.rib_var = tk.StringVar(value=self.settings.get('rib', ''))
+        self.item_var = tk.StringVar(value=self.settings.get('item_name', ''))
+        self.unit_price_var = tk.StringVar(
+            value=self.settings.get('unit_price', ''))
+        self.profession_var = tk.StringVar(
+            value=self.settings.get('client_profession', ''))
+
+        # Row 1
+        ttk.Label(company_frame, text="Nom de l'entreprise:").grid(row=0,
+                                                                   column=0,
+                                                                   sticky=tk.W,
+                                                                   pady=2)
+        ttk.Entry(company_frame, textvariable=self.company_name_var,
+                  width=50).grid(row=0,
+                                 column=1,
+                                 columnspan=2,
+                                 sticky=tk.W + tk.E,
+                                 pady=2,
+                                 padx=(5, 0))
+
+        # Row 2
+        ttk.Label(company_frame, text="Adresse:").grid(row=1,
+                                                       column=0,
+                                                       sticky=tk.W,
+                                                       pady=2)
+        ttk.Entry(company_frame, textvariable=self.address_var,
+                  width=50).grid(row=1,
+                                 column=1,
+                                 columnspan=2,
+                                 sticky=tk.W + tk.E,
+                                 pady=2,
+                                 padx=(5, 0))
+
+        # Row 3
+        ttk.Label(company_frame, text="RC:").grid(row=2,
+                                                  column=0,
+                                                  sticky=tk.W,
+                                                  pady=2)
+        ttk.Entry(company_frame, textvariable=self.rc_var,
+                  width=20).grid(row=2,
+                                 column=1,
+                                 sticky=tk.W,
+                                 pady=2,
+                                 padx=(5, 0))
+
+        ttk.Label(company_frame, text="NIF:").grid(row=2,
+                                                   column=2,
+                                                   sticky=tk.W,
+                                                   pady=2,
+                                                   padx=(20, 0))
+        ttk.Entry(company_frame, textvariable=self.nif_var,
+                  width=20).grid(row=2,
+                                 column=3,
+                                 sticky=tk.W,
+                                 pady=2,
+                                 padx=(5, 0))
+
+        # Row 4
+        ttk.Label(company_frame, text="RIB:").grid(row=3,
+                                                   column=0,
+                                                   sticky=tk.W,
+                                                   pady=2)
+        ttk.Entry(company_frame, textvariable=self.rib_var,
+                  width=30).grid(row=3,
+                                 column=1,
+                                 sticky=tk.W,
+                                 pady=2,
+                                 padx=(5, 0))
+
+        # Row 5
+        ttk.Label(company_frame,
+                  text="Profession du client:").grid(row=4,
+                                                     column=0,
+                                                     sticky=tk.W,
+                                                     pady=2)
+        ttk.Entry(company_frame, textvariable=self.profession_var,
+                  width=30).grid(row=4,
+                                 column=1,
+                                 sticky=tk.W,
+                                 pady=2,
+                                 padx=(5, 0))
+
+        # Row 6
+        ttk.Label(company_frame, text="Désignation:").grid(row=5,
+                                                           column=0,
+                                                           sticky=tk.W,
+                                                           pady=2)
+        ttk.Entry(company_frame, textvariable=self.item_var,
+                  width=30).grid(row=5,
+                                 column=1,
+                                 sticky=tk.W,
+                                 pady=2,
+                                 padx=(5, 0))
+
+        ttk.Label(company_frame, text="Prix unitaire:").grid(row=5,
+                                                             column=2,
+                                                             sticky=tk.W,
+                                                             pady=2,
+                                                             padx=(20, 0))
+        ttk.Entry(company_frame, textvariable=self.unit_price_var,
+                  width=15).grid(row=5,
+                                 column=3,
+                                 sticky=tk.W,
+                                 pady=2,
+                                 padx=(5, 0))
+
+        # Configure grid weights
+        company_frame.columnconfigure(1, weight=1)
+        company_frame.columnconfigure(3, weight=1)
+
+        # Invoice Details Frame
+        invoice_frame = ttk.LabelFrame(main_frame,
+                                       text="Détails de la facture",
+                                       padding=10)
+        invoice_frame.pack(fill=tk.X, pady=(0, 10))
+
+        # Invoice fields
+        self.invoice_number_var = tk.StringVar()
+        self.month_year_var = tk.StringVar()
+        self.layout_var = tk.StringVar(value="1")
+
+        ttk.Label(invoice_frame, text="Numéro de facture:").grid(row=0,
+                                                                 column=0,
+                                                                 sticky=tk.W,
+                                                                 pady=2)
+        ttk.Entry(invoice_frame,
+                  textvariable=self.invoice_number_var,
+                  width=20).grid(row=0,
+                                 column=1,
+                                 sticky=tk.W,
+                                 pady=2,
+                                 padx=(5, 0))
+
+        ttk.Label(invoice_frame, text="Mois/Année:").grid(row=0,
+                                                          column=2,
+                                                          sticky=tk.W,
+                                                          pady=2,
+                                                          padx=(20, 0))
+        ttk.Entry(invoice_frame, textvariable=self.month_year_var,
+                  width=20).grid(row=0,
+                                 column=3,
+                                 sticky=tk.W,
+                                 pady=2,
+                                 padx=(5, 0))
+
+        # Layout selection
+        ttk.Label(invoice_frame, text="Mise en page:").grid(row=1,
+                                                            column=0,
+                                                            sticky=tk.W,
+                                                            pady=2)
+        layout_frame = ttk.Frame(invoice_frame)
+        layout_frame.grid(row=1,
+                          column=1,
+                          columnspan=3,
+                          sticky=tk.W,
+                          pady=2,
+                          padx=(5, 0))
+
+        ttk.Radiobutton(layout_frame,
+                        text="1 facture/page",
+                        variable=self.layout_var,
+                        value="1").pack(side=tk.LEFT)
+        ttk.Radiobutton(layout_frame,
+                        text="2 factures/page",
+                        variable=self.layout_var,
+                        value="2").pack(side=tk.LEFT, padx=(10, 0))
+        ttk.Radiobutton(layout_frame,
+                        text="4 factures/page",
+                        variable=self.layout_var,
+                        value="4").pack(side=tk.LEFT, padx=(10, 0))
+
+        # File selection
+        file_frame = ttk.LabelFrame(main_frame,
+                                    text="Fichier Excel",
+                                    padding=10)
+        file_frame.pack(fill=tk.X, pady=(0, 10))
+
+        self.file_path_var = tk.StringVar()
+        ttk.Entry(file_frame,
+                  textvariable=self.file_path_var,
+                  width=60,
+                  state="readonly").pack(side=tk.LEFT, fill=tk.X, expand=True)
+        ttk.Button(file_frame, text="Parcourir",
+                   command=self.browse_file).pack(side=tk.RIGHT, padx=(10, 0))
+
+        # Buttons
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill=tk.X, pady=20)
+
+        ttk.Button(button_frame,
+                   text="Sauvegarder paramètres",
+                   command=self.save_settings).pack(side=tk.LEFT)
+        ttk.Button(button_frame,
+                   text="Générer PDF",
+                   command=self.generate_pdf,
+                   style="Accent.TButton").pack(side=tk.RIGHT)
+
+    def browse_file(self):
+        file_path = filedialog.askopenfilename(
+            title="Sélectionner fichier Excel",
+            filetypes=[("Excel files", "*.xlsx *.xls")])
+        if file_path:
+            self.file_path_var.set(file_path)
+
+    def number_to_french_words(self, n):
+        """Convert a number to French words."""
+        if n == 0:
+            return "zéro"
+
+        units = [
+            "", "un", "deux", "trois", "quatre", "cinq", "six", "sept", "huit",
+            "neuf"
+        ]
+        teens = [
+            "dix", "onze", "douze", "treize", "quatorze", "quinze", "seize",
+            "dix-sept", "dix-huit", "dix-neuf"
+        ]
+        tens = [
+            "", "", "vingt", "trente", "quarante", "cinquante", "soixante",
+            "soixante", "quatre-vingt", "quatre-vingt"
+        ]
+
+        def convert_hundreds(num):
+            result = ""
+            if num >= 100:
+                if num // 100 == 1:
+                    result += "cent"
+                else:
+                    result += units[num // 100] + " cent"
+                if num % 100 == 0 and num // 100 > 1:
+                    result += "s"
+                num %= 100
+                if num > 0:
+                    result += " "
+
+            if num >= 20:
+                if num < 70:
+                    result += tens[num // 10]
+                    if num % 10 > 0:
+                        if num // 10 == 2 and num % 10 == 1:
+                            result += " et un"
+                        else:
+                            result += "-" + units[num % 10]
+                elif num < 80:
+                    result += "soixante"
+                    if num % 10 > 0:
+                        if num % 10 < 10:
+                            result += "-" + units[num % 10]
+                        else:
+                            result += "-" + teens[num % 10]
+                else:
+                    if num < 90:
+                        result += "quatre-vingt"
+                        if num % 10 > 0:
+                            result += "-" + units[num % 10]
+                        elif num == 80:
+                            result += "s"
+                    else:
+                        result += "quatre-vingt"
+                        if num % 10 < 10:
+                            result += "-" + units[num % 10]
+                        else:
+                            result += "-" + teens[num % 10]
+            elif num >= 10:
+                result += teens[num - 10]
+            elif num > 0:
+                result += units[num]
+
+            return result
+
+        if n < 1000:
+            return convert_hundreds(n)
+        elif n < 1000000:
+            thousands = n // 1000
+            remainder = n % 1000
+            result = ""
+            if thousands == 1:
+                result = "mille"
+            else:
+                result = convert_hundreds(thousands) + " mille"
+            if remainder > 0:
+                result += " " + convert_hundreds(remainder)
+            return result
+        else:
+            millions = n // 1000000
+            remainder = n % 1000000
+            result = ""
+            if millions == 1:
+                result = "un million"
+            else:
+                result = convert_hundreds(millions) + " millions"
+            if remainder > 0:
+                if remainder >= 1000:
+                    result += " " + self.number_to_french_words(remainder)
+                else:
+                    result += " " + convert_hundreds(remainder)
+            return result
+
+    def find_column(self, df_columns, possible_names):
+        """Find a column name from a list of possible variations."""
+        df_columns_lower = [col.lower().strip() for col in df_columns]
+        for possible in possible_names:
+            for i, col_lower in enumerate(df_columns_lower):
+                if possible.lower(
+                ) in col_lower or col_lower in possible.lower():
+                    return df_columns[i]
+        return None
+
+    def generate_pdf(self):
+        # Validate inputs
+        if not self.file_path_var.get():
+            messagebox.showerror("Erreur",
+                                 "Veuillez sélectionner un fichier Excel.")
+            return
+
+        if not self.invoice_number_var.get():
+            messagebox.showerror("Erreur",
+                                 "Veuillez entrer un numéro de facture.")
+            return
+
+        if not self.month_year_var.get():
+            messagebox.showerror("Erreur", "Veuillez entrer le mois/année.")
+            return
+
+        try:
+            unit_price = float(self.unit_price_var.get())
+        except:
+            messagebox.showerror("Erreur", "Prix unitaire invalide.")
+            return
+
+        try:
+            # Save settings before generating
+            self.save_settings()
+
+            # Read Excel file
+            df = pd.read_excel(self.file_path_var.get())
+
+            # Find column mappings
+            name_variations = ['nom', 'nom prenom', 'client', 'name']
+            quantity_variations = ['quantité', 'quantity', 'qte', 'qty']
+            amount_variations = ['montant', 'amount', 'prix', 'price', 'total']
+
+            name_col = self.find_column(df.columns, name_variations)
+            quantity_col = self.find_column(df.columns, quantity_variations)
+            amount_col = self.find_column(df.columns, amount_variations)
+
+            if not all([name_col, quantity_col, amount_col]):
+                messagebox.showerror(
+                    "Erreur",
+                    f"Colonnes manquantes dans le fichier Excel.\\nColonnes disponibles: {', '.join(df.columns)}"
+                )
+                return
+
+            # Generate PDF
+            factures_par_page = int(self.layout_var.get())
+
+            # Ask where to save the PDF
+            pdf_path = filedialog.asksaveasfilename(title="Sauvegarder le PDF",
+                                                    defaultextension=".pdf",
+                                                    filetypes=[("PDF files",
+                                                                "*.pdf")])
+
+            if not pdf_path:
+                return
+
+            # Create PDF
+            today = datetime.date.today().strftime("%d/%m/%Y")
+
+            c = canvas.Canvas(pdf_path, pagesize=A4)
+            largeur, hauteur = A4
+
+            factures_par_ligne = 2 if factures_par_page == 4 else 1
+            factures_par_col = factures_par_page // factures_par_ligne
+            largeur_facture = largeur / factures_par_ligne
+            hauteur_facture = hauteur / factures_par_col
+
+            # Parse starting invoice number
+            invoice_number_start = self.invoice_number_var.get()
+            try:
+                if invoice_number_start.isdigit():
+                    start_num = int(invoice_number_start)
+                    invoice_prefix = ""
+                else:
+                    import re
+                    match = re.match(r'(.*)([0-9]+)$', invoice_number_start)
+                    if match:
+                        invoice_prefix = match.group(1)
+                        start_num = int(match.group(2))
+                    else:
+                        invoice_prefix = invoice_number_start + "-"
+                        start_num = 1
+            except:
+                invoice_prefix = ""
+                start_num = 1
+
+            for i, row in df.iterrows():
+                pos_x = (i % factures_par_ligne) * largeur_facture
+                pos_y = hauteur - (
+                    (i // factures_par_ligne) % factures_par_col +
+                    1) * hauteur_facture
+
+                # Generate invoice number for this row
+                current_invoice_num = start_num + i
+                if invoice_prefix:
+                    invoice_display = f"{invoice_prefix}{current_invoice_num:03d}"
+                else:
+                    invoice_display = str(current_invoice_num)
+
+                # Draw invoice frame
+                c.rect(pos_x + 10, pos_y + 10, largeur_facture - 20,
+                       hauteur_facture - 20)
+
+                # Client header (top line)
+                y_pos = pos_y + hauteur_facture - 30
+                c.setFont("Helvetica", 10)
+                c.drawString(
+                    pos_x + 20, y_pos,
+                    f"NOM ET PRENOM:                 {row[name_col].upper()}                   PROFESSION: {self.profession_var.get()}"
+                )
+
+                # Invoice number and month (centered)
+                y_pos -= 40
+                c.setFont("Helvetica-Bold", 12)
+                invoice_text = f"FACTURE N°:"
+                text_width = c.stringWidth(invoice_text, "Helvetica-Bold", 12)
+                c.drawString(pos_x + (largeur_facture - text_width) / 2, y_pos,
+                             invoice_text)
+                y_pos -= 15
+                text_width = c.stringWidth(invoice_display, "Helvetica-Bold",
+                                           12)
+                c.drawString(pos_x + (largeur_facture - text_width) / 2, y_pos,
+                             invoice_display)
+                y_pos -= 15
+                c.setFont("Helvetica", 10)
+                month_text = f"MOIS : {self.month_year_var.get()}"
+                text_width = c.stringWidth(month_text, "Helvetica", 10)
+                c.drawString(pos_x + (largeur_facture - text_width) / 2, y_pos,
+                             month_text)
+
+                # Company details section
+                y_pos -= 35
+                c.setFont("Helvetica-Bold", 11)
+                c.drawString(pos_x + 20, y_pos,
+                             f"DOIT : {self.company_name_var.get()}")
+                y_pos -= 15
+                c.setFont("Helvetica", 9)
+                c.drawString(pos_x + 20, y_pos,
+                             f"ADRESSE: {self.address_var.get()}")
+                y_pos -= 12
+                c.drawString(
+                    pos_x + 20, y_pos,
+                    f" RC:{self.rc_var.get()}    NIF: {self.nif_var.get()}            RIB : {self.rib_var.get()}"
+                )
+
+                # Table with borders
+                y_pos -= 35
+                table_start_y = y_pos
+                table_height = 60
+
+                # Table columns positions
+                col1_x = pos_x + 20  # Désignation
+                col2_x = pos_x + 200  # Quantité/LITRE
+                col3_x = pos_x + 280  # P.U
+                col4_x = pos_x + 350  # Total
+                table_end_x = pos_x + largeur_facture - 30
+
+                # Draw table borders
+                c.rect(col1_x, y_pos - table_height, table_end_x - col1_x,
+                       table_height)
+                # Vertical lines
+                c.line(col2_x, y_pos, col2_x, y_pos - table_height)
+                c.line(col3_x, y_pos, col3_x, y_pos - table_height)
+                c.line(col4_x, y_pos, col4_x, y_pos - table_height)
+                # Horizontal line for header
+                c.line(col1_x, y_pos - 25, table_end_x, y_pos - 25)
+
+                # Table header
+                c.setFont("Helvetica-Bold", 9)
+                c.drawString(col2_x + 5, y_pos - 10, "Quantité/LITR")
+                c.drawString(pos_x + 25, y_pos - 22, "Désignation")
+                c.drawString(col2_x + 25, y_pos - 22, "E")
+                c.drawString(col3_x + 10, y_pos - 22, "P.U")
+                c.drawString(col4_x + 15, y_pos - 22, "Total")
+
+                # Table content
+                y_pos -= 40
+                c.setFont("Helvetica", 9)
+                quantity = float(row[quantity_col])
+                total = quantity * unit_price
+
+                c.drawString(col1_x + 5, y_pos, self.item_var.get())
+                c.drawString(col2_x + 15, y_pos, str(int(quantity)))
+                c.drawString(col3_x + 10, y_pos, f"{unit_price:.2f}")
+                c.drawString(col4_x + 10, y_pos, f"{total:,.2f}")
+
+                # Amount section
+                y_pos -= 35
+                c.setFont("Helvetica-Bold", 10)
+                c.drawString(col3_x, y_pos,
+                             f"Montant                        {total:,.2f}")
+
+                # Amount in French words
+                y_pos -= 20
+                c.setFont("Helvetica", 8)
+                amount_words = self.number_to_french_words(int(total))
+                c.drawString(
+                    pos_x + 20, y_pos,
+                    f"Arrêté la présente facture à la somme de : {amount_words} dinars"
+                )
+
+                if (i + 1) % factures_par_page == 0:
+                    c.showPage()
+
+            c.save()
+            messagebox.showinfo(
+                "Succès",
+                f"PDF généré avec succès!\\nFichier sauvegardé: {pdf_path}")
+
+        except Exception as e:
+            messagebox.showerror(
+                "Erreur", f"Erreur lors de la génération du PDF: {str(e)}")
+
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = InvoiceGenerator(root)
+    root.mainloop()
