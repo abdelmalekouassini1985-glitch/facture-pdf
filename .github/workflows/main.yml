@@ -1,0 +1,31 @@
+name: Build EXE Factures
+
+on:
+  workflow_dispatch:   # lancement manuel depuis GitHub Actions
+
+jobs:
+  build:
+    runs-on: windows-2022   # plus stable que windows-latest
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installer les dépendances
+        run: |
+          pip install reportlab openpyxl
+
+      - name: Compiler en EXE
+        run: |
+          pyinstaller --onefile --noconsole main.py -n FacturesPDF
+
+      - name: Upload EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: FacturesPDF
+          path: dist/FacturesPDF.exe
